@@ -35,9 +35,10 @@ import (
 )
 
 const (
-	BackupTimeFormat = "20060102.150405.000"
-	compressSuffix   = ".gz"
-	DefaultMaxSize   = 100
+	BackupTimeFormat        = "20060102150405000"
+	BackupFilenameSeparator = "-"
+	compressSuffix          = ".gz"
+	DefaultMaxSize          = 100
 )
 
 // ensure we always implement io.WriteCloser
@@ -251,7 +252,8 @@ func backupName(name string, local bool) string {
 	}
 
 	timestamp := t.Format(BackupTimeFormat)
-	return filepath.Join(dir, fmt.Sprintf("%s-%s%s", prefix, timestamp, ext))
+
+	return filepath.Join(dir, fmt.Sprintf("%s%s%s%s", prefix, BackupFilenameSeparator, timestamp, ext))
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
@@ -289,7 +291,7 @@ func (l *Logger) filename() string {
 	if l.Filename != "" {
 		return l.Filename
 	}
-	name := filepath.Base(os.Args[0]) + "-lumberjack.log"
+	name := filepath.Base(os.Args[0]) + BackupFilenameSeparator + "rotatelog.log"
 	return filepath.Join(os.TempDir(), name)
 }
 
