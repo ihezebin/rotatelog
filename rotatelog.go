@@ -35,10 +35,8 @@ import (
 )
 
 const (
-	BackupTimeFormat        = "20060102150405000"
-	BackupFilenameSeparator = "-"
-	compressSuffix          = ".gz"
-	DefaultMaxSize          = 100
+	compressSuffix = ".gz"
+	DefaultMaxSize = 100
 )
 
 // ensure we always implement io.WriteCloser
@@ -123,6 +121,9 @@ var (
 	// KByte 是 MaxSize 和字节之间的转换因子。它是一个变量，因此测试可以模拟它，而不需要将兆字节的数据写入磁盘。
 	// KByte is the conversion factor between MaxSize and bytes. It is a variable so tests can mock it out and not need to write kilobytes of data to disk.
 	KByte = 1024
+
+	BackupTimeFormat        = "20060102150405000"
+	BackupFilenameSeparator = "_"
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
