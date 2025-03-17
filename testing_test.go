@@ -1,4 +1,4 @@
-package lumberjack
+package rotatelog
 
 import (
 	"fmt"

@@ -1,3 +1,3 @@
-module gopkg.in/natefinch/lumberjack.v2
+module github.com/ihezebin/rotatelog
 
 go 1.13

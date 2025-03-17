@@ -1,6 +1,7 @@
+//go:build linux
 // +build linux
 
-package lumberjack
+package rotatelog
 
 import (
 	"os"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestMaintainMode(t *testing.T) {
-	currentTime = fakeTime
+	CurrentTime = fakeTime
 	dir := makeTempDir("TestMaintainMode", t)
 	defer os.RemoveAll(dir)
 
@@ -49,12 +50,12 @@ func TestMaintainMode(t *testing.T) {
 func TestMaintainOwner(t *testing.T) {
 	fakeFS := newFakeFS()
 	osChown = fakeFS.Chown
-	osStat = fakeFS.Stat
+	OsStat = fakeFS.Stat
 	defer func() {
 		osChown = os.Chown
-		osStat = os.Stat
+		OsStat = os.Stat
 	}()
-	currentTime = fakeTime
+	CurrentTime = fakeTime
 	dir := makeTempDir("TestMaintainOwner", t)
 	defer os.RemoveAll(dir)
 
@@ -85,7 +86,7 @@ func TestMaintainOwner(t *testing.T) {
 }
 
 func TestCompressMaintainMode(t *testing.T) {
-	currentTime = fakeTime
+	CurrentTime = fakeTime
 
 	dir := makeTempDir("TestCompressMaintainMode", t)
 	defer os.RemoveAll(dir)
@@ -132,12 +133,12 @@ func TestCompressMaintainMode(t *testing.T) {
 func TestCompressMaintainOwner(t *testing.T) {
 	fakeFS := newFakeFS()
 	osChown = fakeFS.Chown
-	osStat = fakeFS.Stat
+	OsStat = fakeFS.Stat
 	defer func() {
 		osChown = os.Chown
-		osStat = os.Stat
+		OsStat = os.Stat
 	}()
-	currentTime = fakeTime
+	CurrentTime = fakeTime
 	dir := makeTempDir("TestCompressMaintainOwner", t)
 	defer os.RemoveAll(dir)
 

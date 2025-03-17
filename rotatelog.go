@@ -1,9 +1,9 @@
-// Package lumberjack provides a rolling logger.
+// package rotatelog provides a rolling logger.
 //
 // Note that this is v2.0 of lumberjack, and should be imported using gopkg.in
 // thusly:
 //
-//   import "gopkg.in/natefinch/lumberjack.v2"
+//	import "github.com/ihezebin/rotatelog"
 //
 // The package name remains simply lumberjack, and the code resides at
 // https://github.com/natefinch/lumberjack under the v2.0 branch.
@@ -19,14 +19,13 @@
 // Lumberjack assumes that only one process is writing to the output files.
 // Using the same lumberjack configuration from multiple processes on the same
 // machine will result in improper behavior.
-package lumberjack
+package rotatelog
 
 import (
 	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -36,9 +35,9 @@ import (
 )
 
 const (
-	backupTimeFormat = "2006-01-02T15-04-05.000"
+	BackupTimeFormat = "20060102.150405.000"
 	compressSuffix   = ".gz"
-	defaultMaxSize   = 100
+	DefaultMaxSize   = 100
 )
 
 // ensure we always implement io.WriteCloser
@@ -66,7 +65,7 @@ var _ io.WriteCloser = (*Logger)(nil)
 // `/var/log/foo/server.log`, a backup created at 6:30pm on Nov 11 2016 would
 // use the filename `/var/log/foo/server-2016-11-04T18-30-00.000.log`
 //
-// Cleaning Up Old Log Files
+// # Cleaning Up Old Log Files
 //
 // Whenever a new logfile gets created, old log files may be deleted.  The most
 // recent files according to the encoded timestamp will be retained, up to a
@@ -82,16 +81,14 @@ type Logger struct {
 	// os.TempDir() if empty.
 	Filename string `json:"filename" yaml:"filename"`
 
-	// MaxSize is the maximum size in megabytes of the log file before it gets
-	// rotated. It defaults to 100 megabytes.
+	// MaxSize is the maximum size in kb of the log file before it gets
+	// rotated. It defaults to 100 kb.
 	MaxSize int `json:"maxsize" yaml:"maxsize"`
 
-	// MaxAge is the maximum number of days to retain old log files based on the
-	// timestamp encoded in their filename.  Note that a day is defined as 24
-	// hours and may not exactly correspond to calendar days due to daylight
-	// savings, leap seconds, etc. The default is not to remove old log files
+	// MaxAge is the maximum duration to retain old log files based on the
+	// timestamp encoded in their filename. The default is not to remove old log files
 	// based on age.
-	MaxAge int `json:"maxage" yaml:"maxage"`
+	MaxAge time.Duration `json:"maxage" yaml:"maxage"`
 
 	// MaxBackups is the maximum number of old log files to retain.  The default
 	// is to retain all old log files (though MaxAge may still cause them to get
@@ -117,15 +114,14 @@ type Logger struct {
 
 var (
 	// currentTime exists so it can be mocked out by tests.
-	currentTime = time.Now
+	CurrentTime = time.Now
 
 	// os_Stat exists so it can be mocked out by tests.
-	osStat = os.Stat
+	OsStat = os.Stat
 
-	// megabyte is the conversion factor between MaxSize and bytes.  It is a
-	// variable so tests can mock it out and not need to write megabytes of data
-	// to disk.
-	megabyte = 1024 * 1024
+	// KByte 是 MaxSize 和字节之间的转换因子。它是一个变量，因此测试可以模拟它，而不需要将兆字节的数据写入磁盘。
+	// KByte is the conversion factor between MaxSize and bytes. It is a variable so tests can mock it out and not need to write kilobytes of data to disk.
+	KByte = 1024
 )
 
 // Write implements io.Writer.  If a write would cause the log file to be larger
@@ -213,7 +209,7 @@ func (l *Logger) openNew() error {
 
 	name := l.filename()
 	mode := os.FileMode(0600)
-	info, err := osStat(name)
+	info, err := OsStat(name)
 	if err == nil {
 		// Copy the mode off the old logfile.
 		mode = info.Mode()
@@ -249,12 +245,12 @@ func backupName(name string, local bool) string {
 	filename := filepath.Base(name)
 	ext := filepath.Ext(filename)
 	prefix := filename[:len(filename)-len(ext)]
-	t := currentTime()
+	t := CurrentTime()
 	if !local {
 		t = t.UTC()
 	}
 
-	timestamp := t.Format(backupTimeFormat)
+	timestamp := t.Format(BackupTimeFormat)
 	return filepath.Join(dir, fmt.Sprintf("%s-%s%s", prefix, timestamp, ext))
 }
 
@@ -265,7 +261,7 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 	l.mill()
 
 	filename := l.filename()
-	info, err := osStat(filename)
+	info, err := OsStat(filename)
 	if os.IsNotExist(err) {
 		return l.openNew()
 	}
@@ -319,10 +315,7 @@ func (l *Logger) millRunOnce() error {
 		for _, f := range files {
 			// Only count the uncompressed log file or the
 			// compressed log file, not both.
-			fn := f.Name()
-			if strings.HasSuffix(fn, compressSuffix) {
-				fn = fn[:len(fn)-len(compressSuffix)]
-			}
+			fn := strings.TrimSuffix(f.Name(), compressSuffix)
 			preserved[fn] = true
 
 			if len(preserved) > l.MaxBackups {
@@ -334,8 +327,8 @@ func (l *Logger) millRunOnce() error {
 		files = remaining
 	}
 	if l.MaxAge > 0 {
-		diff := time.Duration(int64(24*time.Hour) * int64(l.MaxAge))
-		cutoff := currentTime().Add(-1 * diff)
+		diff := l.MaxAge
+		cutoff := CurrentTime().Add(-1 * diff)
 
 		var remaining []logInfo
 		for _, f := range files {
@@ -398,7 +391,7 @@ func (l *Logger) mill() {
 // oldLogFiles returns the list of backup log files stored in the same
 // directory as the current log file, sorted by ModTime
 func (l *Logger) oldLogFiles() ([]logInfo, error) {
-	files, err := ioutil.ReadDir(l.dir())
+	entries, err := os.ReadDir(l.dir())
 	if err != nil {
 		return nil, fmt.Errorf("can't read log file directory: %s", err)
 	}
@@ -406,16 +399,20 @@ func (l *Logger) oldLogFiles() ([]logInfo, error) {
 
 	prefix, ext := l.prefixAndExt()
 
-	for _, f := range files {
-		if f.IsDir() {
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+		info, err := entry.Info()
+		if err != nil {
 			continue
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+		if t, err := l.timeFromName(info.Name(), prefix, ext); err == nil {
+			logFiles = append(logFiles, logInfo{t, info})
+			continue
+		}
+		if t, err := l.timeFromName(info.Name(), prefix, ext+compressSuffix); err == nil {
+			logFiles = append(logFiles, logInfo{t, info})
 			continue
 		}
 		// error parsing means that the suffix at the end was not generated
@@ -438,15 +435,15 @@ func (l *Logger) timeFromName(filename, prefix, ext string) (time.Time, error) {
 		return time.Time{}, errors.New("mismatched extension")
 	}
 	ts := filename[len(prefix) : len(filename)-len(ext)]
-	return time.Parse(backupTimeFormat, ts)
+	return time.Parse(BackupTimeFormat, ts)
 }
 
 // max returns the maximum size in bytes of log files before rolling.
 func (l *Logger) max() int64 {
 	if l.MaxSize == 0 {
-		return int64(defaultMaxSize * megabyte)
+		return int64(DefaultMaxSize * KByte)
 	}
-	return int64(l.MaxSize) * int64(megabyte)
+	return int64(l.MaxSize) * int64(KByte)
 }
 
 // dir returns the directory for the current filename.
@@ -472,7 +469,7 @@ func compressLogFile(src, dst string) (err error) {
 	}
 	defer f.Close()
 
-	fi, err := osStat(src)
+	fi, err := OsStat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
