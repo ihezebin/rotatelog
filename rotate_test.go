@@ -12,7 +12,7 @@ import (
 
 // Example of how to rotate in response to SIGHUP.
 func ExampleLogger_Rotate() {
-	l := &Logger{}
+	l := &Rotater{}
 	log.SetOutput(l)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP)

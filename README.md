@@ -23,7 +23,7 @@ To use rotatelog with the standard library's log package, just pass it into the 
 Code:
 
 ```go
-    log.SetOutput(&rotatelog.Logger{
+    log.SetOutput(&rotatelog.Rotater{
     Filename:   "/var/log/myapp/foo.log",
     MaxSize:    500, // megabytes
     MaxBackups: 3,
@@ -32,10 +32,10 @@ Code:
 })
 ```
 
-## type Logger
+## type Rotater
 
 ```go
-type Logger struct {
+type Rotater struct {
     // Filename is the file to write logs to.  Backup log files will be retained
     // in the same directory.  It uses <processname>-lumberjack.log in
     // os.TempDir() if empty.
@@ -69,9 +69,9 @@ type Logger struct {
 }
 ```
 
-Logger is an io.WriteCloser that writes to the specified filename.
+Rotater is an io.WriteCloser that writes to the specified filename.
 
-Logger opens or creates the logfile on first Write. If the file exists and
+Rotater opens or creates the logfile on first Write. If the file exists and
 is less than MaxSize megabytes, lumberjack will open and append to that file.
 If the file exists and its size is >= MaxSize megabytes, the file is renamed
 by putting the current time in a timestamp in the name immediately before the
@@ -80,14 +80,14 @@ log file is then created using original filename.
 
 Whenever a write would cause the current log file exceed MaxSize megabytes,
 the current file is closed, renamed, and a new log file created with the
-original name. Thus, the filename you give Logger is always the "current" log
+original name. Thus, the filename you give Rotater is always the "current" log
 file.
 
-Backups use the log file name given to Logger, in the form `name-timestamp.ext`
+Backups use the log file name given to Rotater, in the form `name-timestamp.ext`
 where name is the filename without the extension, timestamp is the time at which
 the log was rotated formatted with the time.Time format of
 `2006-01-02T15-04-05.000` and the extension is the original extension. For
-example, if your Logger.Filename is `/var/log/foo/server.log`, a backup created
+example, if your Rotater.Filename is `/var/log/foo/server.log`, a backup created
 at 6:30pm on Nov 11 2016 would use the filename
 `/var/log/foo/server-2016-11-04T18-30-00.000.log`
 
@@ -102,21 +102,21 @@ time, which may differ from the last time that file was written to.
 
 If MaxBackups and MaxAge are both 0, no old log files will be deleted.
 
-### func (\*Logger) Close
+### func (\*Rotater) Close
 
 ```go
-func (l *Logger) Close() error
+func (l *Rotater) Close() error
 ```
 
 Close implements io.Closer, and closes the current logfile.
 
-### func (\*Logger) Rotate
+### func (\*Rotater) Rotate
 
 ```go
-func (l *Logger) Rotate() error
+func (l *Rotater) Rotate() error
 ```
 
-Rotate causes Logger to close the existing log file and immediately create a
+Rotate causes Rotater to close the existing log file and immediately create a
 new one. This is a helper function for applications that want to initiate
 rotations outside of the normal rotation rules, such as in response to
 SIGHUP. After rotating, this initiates a cleanup of old log files according
@@ -129,7 +129,7 @@ Example of how to rotate in response to SIGHUP.
 Code:
 
 ```go
-l := &lumberjack.Logger{}
+l := &lumberjack.Rotater{}
 log.SetOutput(l)
 c := make(chan os.Signal, 1)
 signal.Notify(c, syscall.SIGHUP)
@@ -142,10 +142,10 @@ go func() {
 }()
 ```
 
-### func (\*Logger) Write
+### func (\*Rotater) Write
 
 ```go
-func (l *Logger) Write(p []byte) (n int, err error)
+func (l *Rotater) Write(p []byte) (n int, err error)
 ```
 
 Write implements io.Writer. If a write would cause the log file to be larger
