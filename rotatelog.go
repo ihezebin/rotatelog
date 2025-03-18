@@ -459,7 +459,7 @@ func (l *Logger) dir() string {
 func (l *Logger) prefixAndExt() (prefix, ext string) {
 	filename := filepath.Base(l.filename())
 	ext = filepath.Ext(filename)
-	prefix = filename[:len(filename)-len(ext)] + "-"
+	prefix = filename[:len(filename)-len(ext)] + BackupFilenameSeparator
 	return prefix, ext
 }
 
